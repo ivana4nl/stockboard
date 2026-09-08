@@ -52,7 +52,6 @@ st.markdown("""
     .sql-result { background: #1a1f2e; border-radius: 8px; padding: 12px; }
     .block-container { padding-top: 4rem !important; }
     section[data-testid="stSidebar"] > div { padding-top: 0.2rem !important; }
-    [data-testid="collapsedControl"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True) #allows HTML and CSS directly into the page and override Streamlits default look
 
@@ -236,7 +235,7 @@ with st.sidebar: #everything indented under this renders in the left sidebar
     compare_tickers = [t.strip().upper() for t in compare_input.split("\n") if t.strip()] #splits by newline, strips spaces, filters blank lines, returns a clean list like ["AAPL", "MSFT"]
 
 # ── Main tabs ─────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "📉 Technicals", "🏦 Fundamentals", "🔍 SQL Analysis", "💼 Portfolio"]) #creates the 5 tabs and assigns each to a variable
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Overview", "Technicals", "Fundamentals", "SQL Analysis", "Portfolio"]) #creates the 5 tabs and assigns each to a variable
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 hist, info = get_stock_data(ticker_input, selected_period) #fetches price history and fundamentals using the ticker and period from the sidebar
