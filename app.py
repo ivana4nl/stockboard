@@ -18,35 +18,40 @@ st.set_page_config( #tells streamlit how you want the page configured
 )
 
 # ── Custom CSS ────────────────────────────────────────────────────────────────
-#css to set the theme of the website w the colors used & fonts
+# diagonal color fade for the cards | subtle border | rounded corners | inner spacing | gap above/below
+# metric-label: small grey uppercase text | metric-value: large white bold number
+# metric-delta-pos: dark green for gains | metric-delta-neg: dark red for losses
+# section-header: white text, dark blue left bar, spacing above and below
+# inactive tabs grey | active tab dark blue | sidebar background | sql result area styling
+# block-container: reduces top padding on main page | sidebar div: reduces top padding in sidebar
 st.markdown("""
 <style>
     .main { background-color: #0e1117; }
     .metric-card {
-        background: linear-gradient(135deg, #1a1f2e, #252d3d); #diagonal color fade for the cards
-        border: 1px solid #2d3748; #subtle border around each card
-        border-radius: 12px; #rounds the corners of the cards
-        padding: 16px 20px; #space inside the card so text doesnt touch the edges
-        margin: 6px 0; #small gap above and below each card
+        background: linear-gradient(135deg, #1a1f2e, #252d3d);
+        border: 1px solid #2d3748;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 6px 0;
     }
-    .metric-label { color: #8892a4; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; } #styles the small grey label text at the top of each card
-    .metric-value { color: #e2e8f0; font-size: 22px; font-weight: 700; margin-top: 4px; } #styles the big number value in each card
-    .metric-delta-pos { color: #1d4731; font-size: 13px; } #dark green color for positive changes
-    .metric-delta-neg { color: #742a2a; font-size: 13px; } #dark red color for negative changes
+    .metric-label { color: #8892a4; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    .metric-value { color: #e2e8f0; font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .metric-delta-pos { color: #1d4731; font-size: 13px; }
+    .metric-delta-neg { color: #742a2a; font-size: 13px; }
     .section-header {
-        color: #e2e8f0; #bright white text for section titles
-        font-size: 18px; #slightly larger than body text
-        font-weight: 600; #semi-bold
-        border-left: 3px solid #1a365d; #the dark blue vertical bar on the left of each section title
-        padding-left: 12px; #space between the blue bar and the text
-        margin: 20px 0 12px 0; #space above and below each section header
+        color: #e2e8f0;
+        font-size: 18px;
+        font-weight: 600;
+        border-left: 3px solid #1a365d;
+        padding-left: 12px;
+        margin: 20px 0 12px 0;
     }
-    .stTabs [data-baseweb="tab"] { color: #8892a4; } #makes inactive tabs grey
-    .stTabs [aria-selected="true"] { color: #1a365d !important; } #makes the active tab dark blue
-    div[data-testid="stSidebar"] { background-color: #131722; } #sets the sidebar background color
-    .sql-result { background: #1a1f2e; border-radius: 8px; padding: 12px; } #styles the sql results area
-    .block-container { padding-top: 1rem !important; } #reduces the top padding on the main page
-    section[data-testid="stSidebar"] > div { padding-top: 1rem !important; } #reduces the top padding in the sidebar
+    .stTabs [data-baseweb="tab"] { color: #8892a4; }
+    .stTabs [aria-selected="true"] { color: #1a365d !important; }
+    div[data-testid="stSidebar"] { background-color: #131722; }
+    .sql-result { background: #1a1f2e; border-radius: 8px; padding: 12px; }
+    .block-container { padding-top: 1rem !important; }
+    section[data-testid="stSidebar"] > div { padding-top: 1rem !important; }
 </style>
 """, unsafe_allow_html=True) #allows HTML and CSS directly into the page and override Streamlits default look
 
@@ -56,41 +61,49 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "stocks.db") #builds the file 
 def init_db(): #defines a function
     conn = sqlite3.connect(DB_PATH) #opens a connection to database at the path that was just defined
     c = conn.cursor() #creates a cursor whcih sends SQL commands to database
+
+    # watchlist table: ticker is primary key so you cant add same stock twice
     c.execute("""
-        CREATE TABLE IF NOT EXISTS watchlist ( #creates watchlist table only if it doesnt already exist (wont wipe data on restart)
-            ticker TEXT PRIMARY KEY, #ticker is the unique identifier, cant add the same stock twice
-            added_date TEXT, #stores the date you added the stock as a string like "2026-09-06"
-            notes TEXT #plain text field for any notes, can be empty
+        CREATE TABLE IF NOT EXISTS watchlist (
+            ticker TEXT PRIMARY KEY,
+            added_date TEXT,
+            notes TEXT
         )
     """)
+
+    # stock_fundamentals: ticker+date composite key so same stock can appear on multiple dates
+    # price, market_cap, pe_ratio etc are REAL (decimal numbers)
+    # profit_margin, roe, dividend_yield stored as decimals ex. 0.23 = 23%
     c.execute("""
-        CREATE TABLE IF NOT EXISTS stock_fundamentals ( #creates fundamentals table, stores data every time you view a stock
-            ticker TEXT, #ticker column, not a primary key on its own because same stock can appear on multiple dates
-            snapshot_date TEXT, #the date the data was saved
-            price REAL, #REAL means a decimal number
-            market_cap REAL, #total market value of the company
-            pe_ratio REAL, #price to earnings ratio (trailing twelve months)
-            forward_pe REAL, #pe ratio based on projected future earnings
-            eps REAL, #earnings per share
-            revenue REAL, #total revenue trailing twelve months
-            profit_margin REAL, #stored as a decimal ex. 0.23 = 23%
-            debt_to_equity REAL, #how much debt vs shareholder equity
-            roe REAL, #return on equity; also stored as decimal
-            dividend_yield REAL, #annual dividend as a % of price; stored as decimal
-            week_52_high REAL, #highest price in the last 52 weeks
-            week_52_low REAL, #lowest price in the last 52 weeks
-            beta REAL, #measures how volatile the stock is relative to the market
-            PRIMARY KEY (ticker, snapshot_date) #composite key; the combination of ticker AND date must be unique
+        CREATE TABLE IF NOT EXISTS stock_fundamentals (
+            ticker TEXT,
+            snapshot_date TEXT,
+            price REAL,
+            market_cap REAL,
+            pe_ratio REAL,
+            forward_pe REAL,
+            eps REAL,
+            revenue REAL,
+            profit_margin REAL,
+            debt_to_equity REAL,
+            roe REAL,
+            dividend_yield REAL,
+            week_52_high REAL,
+            week_52_low REAL,
+            beta REAL,
+            PRIMARY KEY (ticker, snapshot_date)
         )
     """)
+
+    # portfolio: id is auto-assigned (1,2,3...) and used when deleting a specific trade
     c.execute("""
-        CREATE TABLE IF NOT EXISTS portfolio ( #creates portfolio table to store your trades
-            id INTEGER PRIMARY KEY AUTOINCREMENT, #auto assigns a unique id number to each trade (1, 2, 3...) used when deleting
-            ticker TEXT, #the stock symbol
-            shares REAL, #REAL because you can own fractional shares
-            buy_price REAL, #REAL because prices have decimals like $182.47
-            buy_date TEXT, #stored as a string like "2026-09-06"
-            notes TEXT #any notes you want to attach to the trade
+        CREATE TABLE IF NOT EXISTS portfolio (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT,
+            shares REAL,
+            buy_price REAL,
+            buy_date TEXT,
+            notes TEXT
         )
     """)
     conn.commit() #saves all changes to disk, nothing is written until you commit
@@ -115,13 +128,17 @@ def save_fundamentals(ticker, info): #called every time you view a stock so data
     conn = sqlite3.connect(DB_PATH) #opens a fresh connection to the database
     today = datetime.now().strftime("%Y-%m-%d") #gets todays date formatted as "2026-09-06"
     try:
+        # INSERT OR REPLACE overwrites if same ticker+date already exists
+        # ? placeholders safely pass values into sql, prevents sql injection
+        # tries currentPrice first, falls back to regularMarketPrice if missing
+        # each info.get() pulls one field from the yahoo finance dictionary
         conn.execute("""
-            INSERT OR REPLACE INTO stock_fundamentals #inserts new row, or overwrites if same ticker+date already exists
+            INSERT OR REPLACE INTO stock_fundamentals
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, ( #the ? placeholders safely pass values into sql, prevents sql injection
+        """, (
             ticker, today,
-            info.get("currentPrice") or info.get("regularMarketPrice"), #tries first key, falls back to second if missing
-            info.get("marketCap"), #each info.get() pulls one field from the yahoo finance dictionary
+            info.get("currentPrice") or info.get("regularMarketPrice"),
+            info.get("marketCap"),
             info.get("trailingPE"),
             info.get("forwardPE"),
             info.get("trailingEps"),
@@ -536,11 +553,11 @@ id, ticker, shares, buy_price, buy_date, notes
     st.markdown("**Quick Queries**")
     presets = { #dictionary of preset sql queries; keys are button labels, values are the actual sql strings
         "All saved stocks": "SELECT ticker, price, pe_ratio, eps, profit_margin, roe FROM stock_fundamentals ORDER BY snapshot_date DESC",
-        "Best profit margins": "SELECT ticker, ROUND(profit_margin*100,2) as profit_margin_pct, ROUND(roe*100,2) as roe_pct FROM stock_fundamentals WHERE profit_margin IS NOT NULL ORDER BY profit_margin DESC", #ROUND() is sql math; multiplies by 100 and rounds to 2 decimal places
+        "Best profit margins": "SELECT ticker, ROUND(profit_margin*100,2) as profit_margin_pct, ROUND(roe*100,2) as roe_pct FROM stock_fundamentals WHERE profit_margin IS NOT NULL ORDER BY profit_margin DESC",
         "Lowest P/E ratios": "SELECT ticker, price, pe_ratio, forward_pe FROM stock_fundamentals WHERE pe_ratio IS NOT NULL ORDER BY pe_ratio ASC",
         "High dividend yields": "SELECT ticker, price, ROUND(dividend_yield*100,2) as dividend_yield_pct FROM stock_fundamentals WHERE dividend_yield > 0 ORDER BY dividend_yield DESC",
         "Low debt stocks": "SELECT ticker, price, debt_to_equity, ROUND(profit_margin*100,2) as profit_margin_pct FROM stock_fundamentals WHERE debt_to_equity IS NOT NULL ORDER BY debt_to_equity ASC",
-        "My watchlist": "SELECT w.ticker, w.added_date, w.notes, f.price, f.pe_ratio FROM watchlist w LEFT JOIN stock_fundamentals f ON w.ticker = f.ticker", #LEFT JOIN combines watchlist and fundamentals tables on the ticker column
+        "My watchlist": "SELECT w.ticker, w.added_date, w.notes, f.price, f.pe_ratio FROM watchlist w LEFT JOIN stock_fundamentals f ON w.ticker = f.ticker",
         "Portfolio summary": "SELECT ticker, shares, buy_price, buy_date, notes FROM portfolio ORDER BY buy_date DESC",
     }
 
