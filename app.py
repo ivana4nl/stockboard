@@ -51,7 +51,8 @@ st.markdown("""
     div[data-testid="stSidebar"] { background-color: #131722; }
     .sql-result { background: #1a1f2e; border-radius: 8px; padding: 12px; }
     .block-container { padding-top: 1rem !important; }
-    section[data-testid="stSidebar"] > div { padding-top: 1rem !important; }
+    section[data-testid="stSidebar"] > div { padding-top: 0rem !important; }
+    section[data-testid="stSidebar"] > div > div:first-child { padding-top: 0 !important; }
 </style>
 """, unsafe_allow_html=True) #allows HTML and CSS directly into the page and override Streamlits default look
 
